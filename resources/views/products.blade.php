@@ -1,0 +1,190 @@
+@extends('adminlte::page')
+
+@section('title', 'Manage products')
+
+@section('content_header')
+    
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Manage Products</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.0.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.11.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script src="https://cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="mb-0"><i class="fa-regular fa-credit-card"></i> Manage Products</h3>
+            <a href="/products/create" class="btn btn-success btn-sm">
+                <i class="fa fa-plus"></i> Create New Product
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-sm-6">
+                    <label for="searchBox" class="form-label">Search:</label>
+                    <input type="text" id="searchBox" class="form-control" placeholder="Search products">
+                </div>
+            </div>
+            <table class="table table-bordered data-table">
+                <thead>
+                    <tr>
+                        <th width="60px">No</th>
+                        <th>Name</th>
+                        <th>Details</th>
+                        <th width="280px">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+      
+</body>
+      
+<script type="text/javascript">
+  $(function () {
+
+    /*------------------------------------------
+     --------------------------------------------
+     Pass Header Token
+     --------------------------------------------
+     --------------------------------------------*/ 
+    $.ajaxSetup({
+          headers: {
+              'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+          }
+    });
+      
+    /*------------------------------------------
+    --------------------------------------------
+    Render DataTable
+    --------------------------------------------
+    --------------------------------------------*/
+    var table = $('.data-table').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: "{{ route('products.index') }}",
+        columns: [
+            {data: 'DT_RowIndex', name: 'DT_RowIndex'},
+            {data: 'name', name: 'name'},
+            {data: 'detail', name: 'detail'},
+            {data: 'action', name: 'action', orderable: false, searchable: false},
+        ]
+    });
+      
+    /*------------------------------------------
+    --------------------------------------------
+    Click to Button
+    --------------------------------------------
+    --------------------------------------------*/
+    $('#createNewProduct').click(function () {
+        $('#saveBtn').val("create-product");
+        $('#product_id').val('');
+        $('#productForm').trigger("reset");
+        $('#modelHeading').html("<i class='fa fa-plus'></i> Create New Product");
+        $('#ajaxModel').modal('show');
+    });
+
+    /*------------------------------------------
+    --------------------------------------------
+    Click to Edit Button
+    --------------------------------------------
+    --------------------------------------------*/
+    $('body').on('click', '.showProduct', function () {
+      var product_id = $(this).data('id');
+      $.get("{{ route('products.index') }}" +'/' + product_id, function (data) {
+          $('#showModel').modal('show');
+          $('.show-name').text(data.name);
+          $('.show-detail').text(data.detail);
+      })
+    });
+      
+    /*------------------------------------------
+    --------------------------------------------
+    Click to Edit Button
+    --------------------------------------------
+    --------------------------------------------*/
+    $('body').on('click', '.editProduct', function () {
+      var product_id = $(this).data('id');
+      $.get("{{ route('products.index') }}" +'/' + product_id +'/edit', function (data) {
+          $('#modelHeading').html("<i class='fa-regular fa-pen-to-square'></i> Edit Product");
+          $('#saveBtn').val("edit-user");
+          $('#ajaxModel').modal('show');
+          $('#product_id').val(data.id);
+          $('#name').val(data.name);
+          $('#detail').val(data.detail);
+      })
+    });
+      
+    /*------------------------------------------
+    --------------------------------------------
+    Create Product Code
+    --------------------------------------------
+    --------------------------------------------*/
+    $('#productForm').submit(function(e) {
+        e.preventDefault();
+ 
+        let formData = new FormData(this);
+        $('#saveBtn').html('Sending...');
+  
+        $.ajax({
+                type:'POST',
+                url: "{{ route('products.store') }}",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: (response) => {
+                      $('#saveBtn').html('Submit');
+                      $('#productForm').trigger("reset");
+                      $('#ajaxModel').modal('hide');
+                      table.draw();
+                },
+                error: function(response){
+                    $('#saveBtn').html('Submit');
+                    $('#productForm').find(".print-error-msg").find("ul").html('');
+                    $('#productForm').find(".print-error-msg").css('display','block');
+                    $.each( response.responseJSON.errors, function( key, value ) {
+                        $('#productForm').find(".print-error-msg").find("ul").append('<li>'+value+'</li>');
+                    });
+                }
+           });
+      
+    });
+      
+    /*------------------------------------------
+    --------------------------------------------
+    Delete Product Code
+    --------------------------------------------
+    --------------------------------------------*/
+    $('body').on('click', '.deleteProduct', function () {
+     
+        var product_id = $(this).data("id");
+        confirm("Are You sure want to delete?");
+        
+        $.ajax({
+            type: "DELETE",
+            url: "{{ route('products.store') }}"+'/'+product_id,
+            success: function (data) {
+                table.draw();
+            },
+            error: function (data) {
+                console.log('Error:', data);
+            }
+        });
+    });
+       
+  });
+</script>
+</html>
