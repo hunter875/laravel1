@@ -27,8 +27,8 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8'], // Thêm độ dài tối thiểu cho password
         ];
     }
 
@@ -41,14 +41,16 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+        // Thử xác thực với thông tin đăng nhập
+        if (!Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+            RateLimiter::hit($this->throttleKey()); // Ghi nhận lần thử thất bại
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => trans('auth.failed'), // Thông báo lỗi chuẩn hóa
             ]);
         }
 
+        // Xóa lịch sử rate limit nếu đăng nhập thành công
         RateLimiter::clear($this->throttleKey());
     }
 
@@ -59,14 +61,16 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        // Kiểm tra nếu đã vượt quá số lần thử đăng nhập
+        if (!RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
 
-        event(new Lockout($this));
+        event(new Lockout($this)); // Gửi sự kiện Lockout
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
+        // Ném ngoại lệ với thông báo lỗi rate limiting
         throw ValidationException::withMessages([
             'email' => trans('auth.throttle', [
                 'seconds' => $seconds,
@@ -80,6 +84,7 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->input('email')).'|'.$this->ip());
+        // Sử dụng email và IP để tạo khóa giới hạn
+        return Str::lower($this->input('email')).'|'.$this->ip();
     }
 }

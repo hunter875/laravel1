@@ -10,34 +10,64 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Hash; 
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Profile;
 
 class ProfileController extends Controller
 {
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): View
+    public function edit($id)
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
-        ]);
-    }
-
+        $profile = Profile::where('user_id', $id)->firstOrFail();
+        return view('profiles.edit', compact('profile'));
+    }   
     /**
      * Update the user's profile information.
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        // Lấy thông tin user hiện tại
+        $user = $request->user();
+    
+        // Cập nhật thông tin từ ProfileUpdateRequest
+        $user->fill($request->validated());
+    
+        // Kiểm tra nếu email được cập nhật, đặt lại trạng thái xác minh
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+    
+        // Lưu thông tin user
+        $user->save();
+    
+        // Lấy hoặc tạo profile cho user
+        $profile = Profile::firstOrNew(['user_id' => $user->id]);
+    
+        // Kiểm tra nếu có avatar mới được tải lên
+        
+        $profile = Profile::where('user_id', $id)->firstOrFail();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Kiểm tra nếu có avatar mới được tải lên
+        if ($request->hasFile('avatar')) {
+            // Xóa avatar cũ nếu có
+            if ($profile->avatar) {
+                Storage::delete('public/' . $profile->avatar);
+            }
+
+            // Lưu avatar mới
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+            $profile->avatar = $avatarPath;
         }
 
-        $request->user()->save();
+        // Cập nhật các trường còn lại
+        $profile->update($request->except('avatar'));
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        return redirect()->route('profiles.show', $profile->user_id)->with('success', 'Profile updated successfully.');
     }
+
+    
 
     /**
      * Delete the user's account.
@@ -73,7 +103,8 @@ class ProfileController extends Controller
         $validatedData = $request->validate([
             'name' => 'required|max:255',
             'email' => 'required|email|unique:users',
-            'password' => 'required|min:6|confirmed',  // Ensure password is confirmed
+            'password' => 'required|min:6|confirmed', 
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',  // Ensure password is confirmed
         ]);
 
         // Hash the password before storing
