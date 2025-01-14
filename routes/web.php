@@ -3,6 +3,7 @@
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProductController;
 
 
 // Trang chủ
@@ -32,4 +33,15 @@ require __DIR__.'/auth.php';
 
 // Trang Home
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+//user route
 Route::get('/users/search', [UserController::class, 'search'])->name('users.search');
+Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+Route::post('/users', [UserController::class, 'store'])->name('users.store');    
+
+//product route
+Route::resource('products', ProductController::class);
+Route::get('/products/search', [ProductController::class, 'search'])->name('products.search');
+Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+Route::post('/products/store', [ProductController::class, 'store'])->name('products.store');
+

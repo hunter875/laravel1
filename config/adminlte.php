@@ -334,6 +334,16 @@ return [
             'icon' => 'fas fa-fw fa-user',
         ],
         [
+            'text' => 'USERS',
+            'url' => 'users',
+            'icon' => 'fas fa-fw fa-user',
+        ],
+        [
+            'text' => 'PRODUCTS',
+            'url' => 'products',
+            'icon' => 'fas fa-fw fa-user',
+        ],
+        [
             'text' => 'change_password',
             'url' => 'admin/settings',
             'icon' => 'fas fa-fw fa-lock',
