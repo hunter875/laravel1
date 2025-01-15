@@ -1,119 +1,83 @@
 <?php
-
+// filepath: /c:/Users/minhl/laravel1/app/Http/Controllers/ProfileController.php
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\View\View;
-use Illuminate\Support\Facades\Hash; 
+use App\Services\ProfileService;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\ProfileRequest;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Profile;
 
-class ProfileController extends Controller
-{
-    /**
-     * Display the user's profile form.
-     */
-    public function edit($id)
-    {
-        $profile = Profile::where('user_id', $id)->firstOrFail();
-        return view('profiles.edit', compact('profile'));
-    }   
-    /**
-     * Update the user's profile information.
-     */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        // Lấy thông tin user hiện tại
-        $user = $request->user();
-    
-        // Cập nhật thông tin từ ProfileUpdateRequest
-        $user->fill($request->validated());
-    
-        // Kiểm tra nếu email được cập nhật, đặt lại trạng thái xác minh
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+class ProfileController extends Controller {
+    protected $profileService;
+
+    public function __construct(ProfileService $profileService) {
+        $this->profileService = $profileService;
+    }
+
+    // Display user profile
+    public function index() {
+        $user = $this->profileService->getProfile();
+        return view('profile.index', ['user' => $user]);
+    }
+
+    // Show the form for editing the user profile
+    public function edit(User $profile) {
+        return view('profile.edit', ['user' => $profile]);
+    }
+
+    // Update the user profile
+    public function update(Request $request, $id) {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:8|confirmed',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        $user->name = $request->name;
+        $user->email = $request->email;
+
+        if ($request->filled('password')) {
+            $user->password = bcrypt($request->password);
         }
-    
-        // Lưu thông tin user
-        $user->save();
-    
-        // Lấy hoặc tạo profile cho user
-        $profile = Profile::firstOrNew(['user_id' => $user->id]);
-    
-        // Kiểm tra nếu có avatar mới được tải lên
-        
-        $profile = Profile::where('user_id', $id)->firstOrFail();
 
-        // Kiểm tra nếu có avatar mới được tải lên
         if ($request->hasFile('avatar')) {
-            // Xóa avatar cũ nếu có
-            if ($profile->avatar) {
-                Storage::delete('public/' . $profile->avatar);
+            // Delete old avatar if exists
+            if ($user->avatar) {
+                Storage::delete('public/' . $user->avatar);
             }
 
-            // Lưu avatar mới
+            // Save the new avatar
             $avatarPath = $request->file('avatar')->store('avatars', 'public');
-            $profile->avatar = $avatarPath;
+            $user->avatar = $avatarPath;
         }
 
-        // Cập nhật các trường còn lại
-        $profile->update($request->except('avatar'));
+        $user->save();
 
-        return redirect()->route('profiles.show', $profile->user_id)->with('success', 'Profile updated successfully.');
+        return redirect()->route('profile.index')->with('success', 'Profile updated successfully.');
+        log::info('Profile updated successfully.');
     }
 
-    
+    // Store a new user profile
+    public function store(ProfileRequest $request) {
+        $validated = $request->validated();
 
-    /**
-     * Delete the user's account.
-     */
-    public function destroy(Request $request): RedirectResponse
-    {
-        $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current-password'],
+        $avatar = null;
+        if ($request->hasFile('avatar')) {
+            $avatar = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => bcrypt($validated['password']),
+            'avatar' => $avatar,
         ]);
 
-        $user = $request->user();
-
-        Auth::logout();
-
-        $user->delete();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return Redirect::to('/');
-    }
-    public function create(): View
-    {
-        return view('users.create');
-    }
-
-    /**
-     * Store the newly created user in the database.
-     */
-    public function store(Request $request): RedirectResponse
-    {
-        // Validate the request input
-        $validatedData = $request->validate([
-            'name' => 'required|max:255',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:6|confirmed', 
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',  // Ensure password is confirmed
-        ]);
-
-        // Hash the password before storing
-        $validatedData['password'] = Hash::make($validatedData['password']);
-
-        // Create the user
-        User::create($validatedData);
-
-        return redirect()->route('users.index')->with('success', 'User has been created successfully.');
+        return redirect()->route('profile.index')->with('success', 'Profile created successfully.');
     }
 }
-

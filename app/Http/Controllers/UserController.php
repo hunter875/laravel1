@@ -80,6 +80,7 @@ class UserController extends Controller
         // Update the user using UserService
         $this->userService->updateUser($id, $data);
         return redirect()->route('users.index')->with('success', 'User information has been updated.');
+        log::info('User information has been updated.');
     }
 
     public function destroy($id)
@@ -87,8 +88,16 @@ class UserController extends Controller
         // Delete the user using UserService
         $this->userService->deleteUser($id);
         return redirect()->route('users.index')->with('success', 'User has been deleted.');
+        log::info('User has been deleted.');
         
     }
-   
+    public function searchByName(Request $request)
+    {
+        $search = $request->input('search');
+        $users = User::where('name', 'like', '%' . $search . '%')->get();
+        
+        return view('users.index', compact('users'));
+    }
 }
+
 

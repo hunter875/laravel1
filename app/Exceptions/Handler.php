@@ -47,4 +47,11 @@ class Handler extends ExceptionHandler
             //
         });
     }
+    public function report(Throwable $exception)
+{
+    // Ví dụ: ghi log ngoại lệ
+    \Log::error('An error occurred: ' . $exception->getMessage());
+
+    parent::report($exception);
+}
 }

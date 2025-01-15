@@ -5,8 +5,8 @@ services:
   # PHP Service
   app:
     build:
-      context: .
-      dockerfile: Docker/php/Dockerfile
+      context: ./Docker/
+      dockerfile: php/Dockerfile
     image: projectname/php
     container_name: laravel123_app
     restart: unless-stopped
@@ -18,6 +18,8 @@ services:
     volumes:
       - ./:/var/www/html
       - ./Docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+       - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
     networks:
       - app-network
     depends_on:
@@ -30,7 +32,7 @@ services:
     restart: unless-stopped
     tty: true
     ports:
-      - "80:80"
+      - "8000:80"
       - "443:443"
     volumes:
       - ./:/var/www/html
@@ -47,14 +49,16 @@ services:
     restart: unless-stopped
     tty: true
     ports:
-      - "3306:3306"
+      - "33060:3306"
     environment:
       MYSQL_DATABASE: laravel1_db
-      MYSQL_ROOT_PASSWORD: 123
+      MYSQL_USER: userlaravel1  
+      MYSQL_PASSWORD: minh@123
+      MYSQL_ROOT_PASSWORD: minh@123
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql
     volumes:
-      - dbdata:/var/lib/mysql/
+      - ./.data:/var/lib/mysql/
       - ./Docker/mysql/my.cnf:/etc/mysql/my.cnf
     networks:
       - app-network
